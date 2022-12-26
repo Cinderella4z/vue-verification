@@ -1,5 +1,5 @@
 <template>
-  <div class="verification-box" :style="verificationBoxStyle" v-if="iSverificationShow">
+  <div class="verification-box" :style="verificationBoxStyle" v-if="iSverificationShow" ref="verificationBox">
     <div class="box" :style="{ backgroundImage: `url('/src/components/verificationBox/assets/${backgroundImg}.jpg')` }">
       <div class="box-child" ref="checkBox" :style="boxChildStyle"></div>
       <div class="success-box" v-show="status === 'success'"></div>
@@ -15,7 +15,7 @@
 
 </template>
 <script  setup>
-import { ref, reactive, toRefs, computed, } from 'vue';
+import { ref, reactive, toRefs, computed, onMounted } from 'vue';
 const props = defineProps({
   width: {
     type: Number,
@@ -34,6 +34,7 @@ const { width, success, fail } = toRefs(props)
 const height = ref((width.value / 4) * 3)
 const dragBox = ref(null)
 const checkBox = ref(null)
+const verificationBox = ref(null)
 const dragBoxPosition = reactive({
   dragX: renderNum((width.value / 2), (width.value * 0.8)),
   dragY: Math.random() * (height.value * 0.6) + 'px',
@@ -54,23 +55,35 @@ const backgroundImg = computed(() => {
   const random = Math.floor(Math.random() * 10)
   return random >= imgName.length ? `a${imgName.length - 1}` : `a${random}`
 })
+const verificationBoxLeft = computed(() => verificationBox.value.getBoundingClientRect().left)
+/**
+ * @description 生成所需要的随机数区间
+ * @param {最小值} min 
+ * @param {最大值} number 
+ */
 function renderNum (min, number) {
   const num = Math.floor(Math.random() * number)
   if (num < min) return min + 'px'
   else return num + 'px'
 }
-const drag = ({ pageX }) => {
+/**
+ * @description 主要功能函数，拖动滑块
+ * @param {拖动的距离} event.pageX 
+ */
+const drag = ({ pageX, }) => {
   const num = dragBoxPosition._dragX.slice(0, dragBoxPosition._dragX.length - 2)
-  if (pageX < 0 || pageX > width.value * 0.8 - Number(num)) {
+  const slideWidth = pageX - verificationBoxLeft.value
+  if (slideWidth < 0 || slideWidth > width.value * 0.8 - Number(num)) {
     return
   }
-  slide.value = pageX + 'px'
-  dragBox.value.style.transform = `translateX(${pageX}px)`
-  checkBox.value.style.transform = `translateX(${pageX}px)`
+  slide.value = slideWidth + 'px'
+  dragBox.value.style.transform = `translateX(${slideWidth}px)`
+  checkBox.value.style.transform = `translateX(${slideWidth}px)`
 }
 const handleDrag = (e) => {
   document.addEventListener('mousemove', drag)
   document.addEventListener('mouseup', handleCheck)
+  return a
 }
 const handleCheck = (e) => {
   function check (pageX, range) {
@@ -86,7 +99,7 @@ const handleCheck = (e) => {
     }
   }
   document.removeEventListener('mousemove', drag)
-  check(e.pageX, 10)
+  check(e.pageX - verificationBoxLeft.value, 10)
 }
 const handleFail = () => {
   new Promise((res) => {
@@ -96,7 +109,7 @@ const handleFail = () => {
   }).then(res => {
     setTimeout(() => {
       status.value = ''
-      drag({ pageX: 0 })
+      drag({ pageX: verificationBoxLeft.value })
       dragBoxPosition.dragX = renderNum((width.value / 2), (width.value * 0.8))
       dragBoxPosition.dragY = Math.random() * (height.value * 0.6) + 'px'
     }, 2000);
@@ -110,9 +123,15 @@ const handleSuccess = () => {
   }, 2000);
 }
 
-
 </script>
 <style  scoped>
+.verification-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 .box {
   width: 100%;
   height: 80%;
